@@ -1,32 +1,14 @@
 package enUcuz.launcher;
 import javax.swing.*;
-import enUcuz.market.A101;
 
 import enUcuz.dao.MongoRepository;
-import enUcuz.launcher.swing;
-import enUcuz.market.Caglarsoy;
-import enUcuz.market.Carrefour;
 import enUcuz.model.Product;
 
-import java.io.IOException;
+import java.awt.*;
 
 public class Main {
 
     public static void main(String[] args) {
-        //changing the interface look according to operating systems
-        MongoRepository<Product> repo = MongoRepository.getInstance();
-        /*try {
-            A101 a101 = new A101();
-            // Carrefour carrefour = new Carrefour();
-            //Carrefour carrefour = new Carrefour();
-
-            for(int i=0;i<a101.products.size();i++){
-                repo.insert(a101.products.get(i));
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }*/
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (ClassNotFoundException | UnsupportedLookAndFeelException | IllegalAccessException | InstantiationException e) {
@@ -38,6 +20,11 @@ public class Main {
             public void run() {
                 swing2 mySwing = new swing2();
                 mySwing.setVisible(true);
+                mySwing.setResizable(false);
+                Dimension dimension = Toolkit.getDefaultToolkit().getScreenSize();
+                int x = (int) ((dimension.getWidth() - mySwing.getWidth()) / 2);
+                int y = (int) ((dimension.getHeight() - mySwing.getHeight()) / 2);
+                mySwing.setLocation(x, y);
             }
         });
     }
