@@ -19,7 +19,7 @@ import java.awt.image.BufferedImage;
 
 
 
-public class swing2 extends JFrame{
+public class MainFrame extends JFrame{
     JTextField searchText = new JTextField();
     JButton searchButton = new JButton();
     JPanel panel_item;
@@ -49,7 +49,7 @@ public class swing2 extends JFrame{
 
     MongoRepository repo = MongoRepository.getInstance();
 
-    public swing2(){
+    public MainFrame(){
         super();
         setLayout(new FlowLayout());
         setLayout(null);
@@ -131,6 +131,20 @@ public class swing2 extends JFrame{
         }
     }
 
+    private String splitProductName(String productName){
+        int where_to_split = productName.lastIndexOf(" ", productName.length() /3 );
+
+        String first_part = productName;
+        String second_part = "";
+
+        if(where_to_split!=-1){
+            first_part = productName.substring(0,where_to_split);
+            second_part = productName.substring(where_to_split);
+        }
+
+        return first_part+"<br/>"+second_part;
+    }
+
     private class textFieldHandler implements ActionListener{
         @Override
         public void actionPerformed(ActionEvent e){
@@ -146,21 +160,13 @@ public class swing2 extends JFrame{
                     results.sort(Comparator.comparingInt(o -> o.getString("name").length()));
 
                     Image image = getImageURL(results.get(i).getString("image"));
+
                     String product_name = "<html>" + results.get(i).getString("name") + "</html>";
-
-                    int where_to_split = product_name.lastIndexOf(" ",product_name.length() /3 );
-
-                    String first_part = product_name;
-                    String second_part = "";
-
-                    if(where_to_split!=-1){
-                        first_part = product_name.substring(0,where_to_split);
-                        second_part = product_name.substring(where_to_split);
-                    }
+                    product_name = splitProductName(product_name);
 
                     image_label = new JLabel(new ImageIcon(fitimage(image,150,150)));
                     market_label = setMarketLabel(results.get(i).getString("market"));
-                    name_label = setNameLabel(first_part+"<br/>"+second_part);
+                    name_label = setNameLabel(product_name);
                     name_label.add(image_label);
                     price_label = setPriceLabel(results.get(i).getString("price"));
 

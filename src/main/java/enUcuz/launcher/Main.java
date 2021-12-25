@@ -1,9 +1,6 @@
 package enUcuz.launcher;
 import javax.swing.*;
 
-import enUcuz.dao.MongoRepository;
-import enUcuz.model.Product;
-
 import java.awt.*;
 
 public class Main {
@@ -18,7 +15,7 @@ public class Main {
         SwingUtilities.invokeLater(new Runnable() {
             @Override
             public void run() {
-                swing2 mySwing = new swing2();
+                MainFrame mySwing = new MainFrame();
                 mySwing.setVisible(true);
                 mySwing.setResizable(false);
                 Dimension dimension = Toolkit.getDefaultToolkit().getScreenSize();
