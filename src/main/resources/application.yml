@@ -1,0 +1,4 @@
+mode: dev
+uri: mongodb+srv://dou:xdll241xd@cluster0.kb07l.mongodb.net/Cluster0?retryWrites=true&w=majority
+database: EnUcuz
+collection: Products
