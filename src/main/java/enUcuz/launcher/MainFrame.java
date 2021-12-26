@@ -3,6 +3,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import java.awt.image.*;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
@@ -15,22 +16,18 @@ import enUcuz.dao.MongoRepository;
 import org.bson.Document;
 import java.net.URL;
 import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-
 
 
 public class MainFrame extends JFrame{
-    JTextField searchText = new JTextField();
-    JButton searchButton = new JButton();
+    JTextField searchText;
+    JButton searchButton, nextButton;
     JPanel panel_item;
-    JLabel name_label, price_label,image_label, market_label;
+    JLabel name_label, price_label,image_label, market_label, counterText;
 
     static final int PROGRAM_SIZE = 1200;
 
-    static final int x_padding = 310;
-    static final int y_padding = 310;
-    static final int max_x_axis = 1500;
-    static final int max_y_axis =1500;
+    static final int PADDING_X = 310;
+    static final int PADDING_Y = 310;
 
     static final int Y_ALIGNMENT_HEADER = 100;
     static final int X_ALIGNMENT_HEADER = 150;
@@ -41,11 +38,33 @@ public class MainFrame extends JFrame{
     static final int SEARCH_SIZE_X = 900;
     static final int SEARCH_SIZE_Y = 30;
 
-    static JFrame frame;
+    static final int Y_NEXT_ALIGNMENT = 1000;
+
+    static final int max_x_axis = 1500;
+    static final int max_y_axis =1500;
+
+    static MainFrame frame;
+
     static int x_axis = 150;
     static int y_axis = 250;
 
+    static Integer pageCount;
+    static Long totalCount;
 
+    static List<Document> documentsToRender;
+
+    public void refresh(){
+        Component[] componentList = frame.getContentPane().getComponents();
+
+        for(Component c : componentList){
+            if(c instanceof JPanel){
+                frame.getContentPane().remove(c);
+            }
+        }
+
+        frame.revalidate();
+        frame.repaint();
+    }
 
     MongoRepository repo = MongoRepository.getInstance();
 
@@ -54,22 +73,107 @@ public class MainFrame extends JFrame{
         setLayout(new FlowLayout());
         setLayout(null);
 
-        textFieldHandler handler = new textFieldHandler();
 
-        searchButton.setText("Ara");
+        nextButton = new JButton();
+        nextButton.setText("NEXT");
+        nextButton.setFont(new Font(Font.SANS_SERIF, 0, 15));
+        nextButton.setSize(BUTTON_SIZE_X,BUTTON_SIZE_Y);
+        nextButton.setLocation(SEARCH_SIZE_X - 375, Y_NEXT_ALIGNMENT + 125);
+        nextButton.setVisible(false);
+        nextButton.setBackground(Color.LIGHT_GRAY);
+
+        searchButton = new JButton();
+        searchButton.setText("SEARCH");
+        searchButton.setFont(new Font(Font.SANS_SERIF, 0, 15));
         searchButton.setSize(BUTTON_SIZE_X, BUTTON_SIZE_Y);
         searchButton.setLocation(SEARCH_SIZE_X + 160, Y_ALIGNMENT_HEADER);
-        searchButton.addActionListener(handler);
+        searchButton.setBackground(Color.LIGHT_GRAY);
 
+        searchText = new JTextField();
         searchText.setSize(SEARCH_SIZE_X, SEARCH_SIZE_Y);
+        searchText.setFont(new Font(Font.SANS_SERIF, 0, 15));
         searchText.setLocation(X_ALIGNMENT_HEADER, Y_ALIGNMENT_HEADER);
-        searchText.addActionListener(handler);
+
+        counterText = new JLabel();
+        counterText.setLocation(SEARCH_SIZE_X - 350, Y_ALIGNMENT_HEADER + 50);
+        counterText.setFont(new Font(Font.SANS_SERIF, 0, 15));
+        counterText.setSize(BUTTON_SIZE_X, BUTTON_SIZE_Y);
 
         add(searchText);
         add(searchButton);
+        add(nextButton);
+        add(counterText);
+
         setSize(PROGRAM_SIZE,PROGRAM_SIZE);
 
+        searchButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                Iterable<Document> result = repo.findByName(MongoRepository.By.NAME, searchText.getText());
+                long length = StreamSupport.stream(result.spliterator(),false).count();
+
+                documentsToRender = StreamSupport.stream(result.spliterator(),false).collect(Collectors.toList());
+                documentsToRender.sort(Comparator.comparingInt(o -> o.getString("name").length()));
+
+                pageCount = 1;
+                totalCount = length / 9;
+
+                if(totalCount > 1)
+                    nextButton.setVisible(true);
+                else
+                    nextButton.setVisible(false);
+
+                addProductsToPanel(documentsToRender);
+
+            }
+        });
+
+        nextButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if(documentsToRender == null || documentsToRender.size() <= 0 || pageCount >= totalCount){
+                    nextButton.setVisible(false);
+                    return;
+                }
+
+                documentsToRender = documentsToRender.subList(3, documentsToRender.size());
+                pageCount += 1;
+                addProductsToPanel(documentsToRender);
+            }
+        });
+
         frame = this;
+    }
+
+    private Image imageFit(Image img , int w , int h)
+    {
+        BufferedImage resizedimage = new BufferedImage(w,h,BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2 = resizedimage.createGraphics();
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g2.drawImage(img, 0, 0,w,h,null);
+        g2.dispose();
+        return resizedimage;
+    }
+
+    public static Image makeColorTransparent(Image im, final Color color) {
+            ImageFilter filter = new RGBImageFilter() {
+                // the color we are looking for... Alpha bits are set to opaque
+                public int markerRGB = color.getRGB() | 0xFF000000;
+
+                public final int filterRGB(int x, int y, int rgb) {
+                    if ( ( rgb | 0xFF000000 ) == markerRGB ) {
+                        // Mark the alpha bits as zero - transparent
+                        return 0x00FFFFFF & rgb;
+                    }
+                    else {
+                        // nothing to do
+                        return rgb;
+                    }
+                }
+            };
+
+            ImageProducer ip = new FilteredImageSource(im.getSource(), filter);
+            return Toolkit.getDefaultToolkit().createImage(ip);
     }
 
     private JLabel setNameLabel(String name){
@@ -126,7 +230,7 @@ public class MainFrame extends JFrame{
     private void checkAndSetLocation(){
         if(x_axis + 260 >= max_x_axis){
             x_axis = 150;
-            y_axis += y_padding;
+            y_axis += PADDING_Y;
             panel_item.setLocation(x_axis,y_axis);
         }
     }
@@ -145,57 +249,33 @@ public class MainFrame extends JFrame{
         return first_part+"<br/>"+second_part;
     }
 
-    private class textFieldHandler implements ActionListener{
-        @Override
-        public void actionPerformed(ActionEvent e){
-            if(e.getSource() == searchButton){
-                JFrame frame2 = new JFrame("JFrame Example");
-                Iterable<Document> result = repo.findByName(MongoRepository.By.NAME, searchText.getText());
-                long length = StreamSupport.stream(result.spliterator(),false).count();
+    private void addProductsToPanel(List<Document> products){
+        frame.refresh();
+        for(Document product : products) {
+            checkAndSetLocation();
 
-                for(int i = 0; i < length; i++){
-                    checkAndSetLocation();
+            String product_name = "<html>" + product.getString("name") + "</html>";
+            product_name = splitProductName(product_name);
 
-                    List<Document> results = StreamSupport.stream(result.spliterator(),false).collect(Collectors.toList());
-                    results.sort(Comparator.comparingInt(o -> o.getString("name").length()));
+            image_label = new JLabel(new ImageIcon(makeColorTransparent(imageFit(getImageURL(product.getString("image")), 150, 150), Color.WHITE)));
+            market_label = setMarketLabel(product.getString("market"));
+            name_label = setNameLabel(product_name);
+            price_label = setPriceLabel(product.getString("price"));
+            panel_item = setProductPanel(name_label, market_label, image_label, price_label);
 
-                    Image image = getImageURL(results.get(i).getString("image"));
-
-                    String product_name = "<html>" + results.get(i).getString("name") + "</html>";
-                    product_name = splitProductName(product_name);
-
-                    image_label = new JLabel(new ImageIcon(fitimage(image,150,150)));
-                    market_label = setMarketLabel(results.get(i).getString("market"));
-                    name_label = setNameLabel(product_name);
-                    name_label.add(image_label);
-                    price_label = setPriceLabel(results.get(i).getString("price"));
-
-                    panel_item = setProductPanel(name_label, market_label, image_label, price_label);
-
-                    if(y_axis + 250 >= max_y_axis) {
-                        System.out.println("small");
-                        break;
-                    }
-
-                    x_axis += x_padding;
-
-                    frame.add(panel_item);
-                    frame.revalidate();
-                    frame.repaint();
-                }
+            if (y_axis + 250 >= max_y_axis) {
+                break;
             }
-        }
 
-        private Image fitimage(Image img , int w , int h)
-        {
-            BufferedImage resizedimage = new BufferedImage(w,h,BufferedImage.TYPE_INT_RGB);
-            Graphics2D g2 = resizedimage.createGraphics();
-            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g2.drawImage(img, 0, 0,w,h,null);
-            g2.dispose();
-            return resizedimage;
-        }
+            x_axis += PADDING_X;
 
+            counterText.setText(pageCount.toString() + "/" + totalCount.toString());
+            frame.add(panel_item);
+            frame.revalidate();
+            frame.repaint();
+        }
+        x_axis = 150;
+        y_axis = 250;
     }
 
 
